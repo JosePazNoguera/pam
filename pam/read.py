@@ -309,6 +309,7 @@ def load_activity_plan(
                     seq=0,
                     act='home',
                     area=origin_area,
+                    loc = (trips.iloc[0]['location'].y,trips.iloc[0]['location'].x),
                     start_time=utils.minutes_to_datetime(0),
                 )
             )
@@ -332,6 +333,7 @@ def load_activity_plan(
                         seq=n + 1,
                         act=trip.activity.lower(),
                         area=trip.dzone,
+                        loc = (trip.location.y,trip.location.x),
                         start_time=utils.minutes_to_datetime(trip.tet),
                     )
                 )

@@ -164,8 +164,8 @@ def write_matsim_plans(population, location, comment=None):
                 if isinstance(component, Activity):
                     et.SubElement(plan_xml, 'act', {
                         'type': component.act,
-                        'x': str(float(component.location.loc.x)),
-                        'y': str(float(component.location.loc.y)),
+                        'x': str(float(component.location.loc[1])),
+                        'y': str(float(component.location.loc[0])),
                         'end_time': dttm(component.end_time)
                     }
                                   )
@@ -177,8 +177,8 @@ def write_matsim_plans(population, location, comment=None):
             component = person[-1]  # write the last activity without an end time
             et.SubElement(plan_xml, 'act', {
                 'type': component.act,
-                'x': str(float(component.location.loc.x)),
-                'y': str(float(component.location.loc.y)),
+                'x': str(float(component.location.loc[1])),
+                'y': str(float(component.location.loc[0])),
             }
             )
 
