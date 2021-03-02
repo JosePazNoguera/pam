@@ -727,3 +727,45 @@ def write_departure_time_benchmark(population, path=None):
 def write_mode_purpose_split_benchmark(population, path=None):
     # purpose split for each mode
     return write_benchmarks(population, dimensions = ['mode','purp'], data_fields= ['freq'], normalise_by = ['mode'], colnames = ['mode','purpose', 'trips'], aggfunc = [sum])
+
+
+def write_activities(
+    population,
+    path = None
+    ):
+    """
+    Export a table of activities of a population
+    """
+    ## collect data
+    df = []
+    for hid, pid, person in population.people():
+        for idx, act in enumerate(person.activities):
+            record = {
+                    'pid': pid,
+                    'hid': hid,
+                    'hzone': person.home,
+                    'act': act.act,
+                    'seq': act.seq,
+                    'start_time': act.start_time,
+                    'end_time': act.end_time,
+                    'duration': act.duration,
+                    'freq': act.freq,
+                    'location': str(act.location)
+                }
+            record = {**record, **dict(person.attributes)} # add person attributes
+            df.append(record)
+    df = pd.DataFrame(df)
+    df['start_hour'] = df.start_time.apply(lambda x:x.hour)
+    df['end_hour'] = df.end_time.apply(lambda x:x.hour)
+    df['duration_minutes'] = df.duration / pd.Timedelta(minutes=1)
+
+    ## export
+    if path != None:
+        if path.lower().endswith('.csv'):
+            df.to_csv(path, index=False)
+        elif path.lower().endswith('.json'):
+            df.to_json(path, orient='records')
+        else:
+            raise ValueError('Please specify a valid csv or json file path.')
+
+    return df
