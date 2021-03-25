@@ -30,6 +30,7 @@ class Planner:
         self.start_time_pdf = None
         self.plan_frequencies = None
         self.plan_frequencies_group = None
+        self.person_counter = self.inf_counter()
 
     def train(self, population):
         """
@@ -46,6 +47,7 @@ class Planner:
         self.activities = write.write_activities(population)
         self.activities['freq'] = 1
         self.activities['start_minute'] = (self.activities.start_time - pd.Timestamp(1900,1,1))/pd.Timedelta(minutes=1)
+        self.activities['hzone'] = self.activities['hzone'].map(str)
 
         # observed frequncy distributions
         self.freq_departure_purp = write.write_benchmarks(population, dimensions = ['departure_hour','purp'], data_fields=['freq'], aggfunc=sum)
@@ -277,9 +279,22 @@ class Planner:
         p = self.activities.groupby(weighted_on).freq.sum()
         p = p / p.sum()
         p = p.sample(weights = p.values)
+        pid = 'synth_{}'.format(next(self.person_counter))
         attributes = p.reset_index().drop(columns=['freq']).to_dict('records')[0]
-        person = Person('a', attributes=attributes)
+        person = Person(pid, attributes=attributes)
         return person
+
+
+
+    ##### helper functions ################################################################################
+    def inf_counter(self):
+        """
+        An infinite counter - used to ID generated elements
+        """
+        counter = 0
+        while True:
+            yield counter
+            counter += 1
 
 
     ##### plots ################################################################################
