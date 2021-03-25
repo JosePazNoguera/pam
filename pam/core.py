@@ -918,3 +918,10 @@ class Person:
     def pickle(self, path):
         with open(path, 'wb') as file:
             pickle.dump(self, file)
+
+    def create_plan(self, scheduler, planner):
+        """
+        Create a person plan using a specified PAM.Planner
+        """
+        scheduler(self, planner)
+        return self.plan
