@@ -4,10 +4,13 @@ from pam.core import Person
 
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib.ticker as mtick
 import seaborn as sns
 import scipy
 import itertools
 from pam import variables
+
+import numpy as np
 
 
 class Planner:
@@ -79,7 +82,9 @@ class Planner:
         return df.sort_values(['pid','seq']).groupby(['pid']).act.apply(lambda x:'-->'.join(x)).value_counts(normalize=True)
 
     def get_plan_frequencies_group(self, control_groups = ['age','gender']):
-        return self.activities.groupby(control_groups).apply(self.get_plan_frequencies)
+        plan_freqs = self.activities.groupby(control_groups).apply(self.get_plan_frequencies)
+        plan_freqs.index.rename(level=[-1], names=['plan'], inplace=True)
+        return plan_freqs
 
     ##### transition matrix ################################################################################
 
@@ -184,10 +189,56 @@ class Planner:
         """
         pdf_dict = {}
         for act in self.activities.act.unique():
-            pdf_dict[act] = scipy.stats.gaussian_kde(self.activities[self.activities.act==act].start_minute)
+            pdf_dict[act] = scipy.stats.gaussian_kde(self.activities[self.activities.act==act].start_minute / 60)
 
         return pdf_dict
 
+    ##### tour analysis ################################################################################
+    def get_tours(self, plan, target_act='home'):
+        """
+        Extract tours from an activity sequence
+        :params list plan: A sequence (list) of activities (ie ['home', 'escort_education', 'home', 'work', 'home'])
+        :params str target_act: The "base" of the tour (ie if target_act=='home', then it will home-based tours are returned)
+        """
+        tours = []
+        tour = None
+        for i, act in enumerate(plan):
+            if act == target_act:
+                if tour is not None:
+                    tours.append(tour)
+                tour = []
+            elif tour is not None:
+                tour.append(act)
+
+        return tours
+
+    def get_home_tours(self):
+        """
+        Split persons' activities into tour lists
+        :returns: pd.Series with person ID as index, and a list of tour lists as values
+        """
+        return self.activities.groupby('pid').act.apply(list).apply(lambda x: self.get_tours(x,'home'))
+
+    ##### sampling ################################################################################
+    def draw_kde(self, pdf, n=1):
+        """
+        Draw a sample from a Kernel Density Function
+        """
+        return pdf.resample(n)[0][0]
+
+    def draw_duration(self, act):
+        """
+        Draw a duration sample for a specified activity purpose
+        :params str act: activity purpose (ie 'work')
+        """
+        return self.draw_kde(self.duration_pdf[act])
+
+    def draw_start_time(self, act):
+        """
+        Draw a duration sample for a specified activity purpose
+        :params str act: activity purpose (ie 'work')
+        """
+        return self.draw_kde(self.start_time_pdf[act])
 
     ##### generative functions ################################################################################
 
@@ -277,3 +328,68 @@ class Planner:
         plt.grid()
         plt.xlim(0,1)
         plt.show()
+
+
+    def plot_kde(self, pdf, start=0, end=24, title='Probability density', xlabel='Time', ylabel='Probability', figsize=(10,6)):
+        """
+        Plot kernel density function probabilities
+        :params scipy.stats.gaussian_kde pdf: s KDE density function
+        :params int start: start hour 
+        :params int end: end hour 
+        """
+        x = np.linspace(start,end,10*end)
+        plt.figure(figsize=figsize)
+        plt.plot(x, pdf(x))#, marker='.')
+        plt.title(title)
+        plt.xlabel(xlabel)
+        plt.ylabel(ylabel)
+        plt.xlim(start, end)
+        plt.grid()
+        # plt.show()
+
+    def plot_duration_kde(self):
+        """
+        Plot all duration density functions
+        """
+        for act in self.duration_pdf:
+            self.plot_kde(self.duration_pdf[act], title = 'Duration probability, {}'.format(act), figsize=(8,3))
+
+    def plot_start_time_kde(self):
+        """
+        Plot all duration density functions
+        """
+        for act in self.start_time_pdf:
+            self.plot_kde(self.start_time_pdf[act], title = 'Start time probability, {}'.format(act), figsize=(8,3))
+
+    def plot_plan_frequencies(self, act_seqs, print_results, n, title, figsize=(10,7)):
+        """
+        Plot top plan frequencies
+        :params pd.Series act_seqs: Activity sequence frequencies
+        """
+        # act_seqs = self.get_plan_frequencies(self.activities)# * 100
+        if print_results:
+            print('Most common activity sequences')
+            print('-'*100)
+            print(act_seqs[:n])
+            print('-'*100)
+        fig, ax = plt.subplots(1,1, figsize=figsize)
+        act_seqs[:n].sort_values(ascending=True).plot(kind='barh', ax=ax)
+        ax.xaxis.set_major_formatter(mtick.PercentFormatter(1, decimals=0))
+        plt.title(title)
+        plt.grid()
+        plt.xlabel('% of plans')
+        # plt.show()
+
+    def plot_plan_frequencies_group(self, groupby=None, print_results=False, n=10, title='Most common activity sequences'):
+        """
+        Plot top n plan frequencies
+        """
+        if groupby is None:
+            act_seqs = self.get_plan_frequencies(self.activities)
+            self.plot_plan_frequencies(act_seqs=act_seqs, print_results=print_results, n=n, title=title)
+        else:
+            act_seqs = self.get_plan_frequencies_group(groupby)
+            for i, igroup in act_seqs.groupby(level=act_seqs.index.names[:-1]):
+                label = i if isinstance(i, str) else ', '.join(i)
+                self.plot_plan_frequencies(act_seqs=igroup.droplevel(igroup.index.names[:-1]), print_results=print_results, n=n, title=title+', '+label)
+
