@@ -9,6 +9,7 @@ import seaborn as sns
 import scipy
 import itertools
 from pam import variables
+from pam.planner import choice
 
 import numpy as np
 
@@ -25,6 +26,7 @@ class Planner:
         self.mode_split = None
         self.transition_matrix = None
         self.duration_pdf = None
+        self.trip_duration_pdf = None
         self.start_time_pdf = None
         self.plan_frequencies = None
         self.plan_frequencies_group = None
@@ -64,6 +66,7 @@ class Planner:
 
         # duration and start time probability density function
         self.duration_pdf = self.get_duration_pdf()
+        self.trip_duration_pdf = self.get_trip_duration_pdf()
         self.start_time_pdf = self.get_start_time_pdf()
 
         # activity generation stats
@@ -174,11 +177,21 @@ class Planner:
 
     def get_duration_pdf(self):
         """
-        Gausian KDE probability function of each purpose
+        Gausian KDE probability function of activity duration (in hours) for each purpose
         """
         pdf_dict = {}
         for act in self.activities.act.unique():
             pdf_dict[act] = scipy.stats.gaussian_kde(self.activities[self.activities.act==act].duration_minutes/60)
+
+        return pdf_dict
+
+    def get_trip_duration_pdf(self):
+        """
+        Gausian KDE probability function of travel time (in hours) for each purpose
+        """
+        pdf_dict = {}
+        for purpose in self.trips.purp.unique():
+            pdf_dict[purpose] = scipy.stats.gaussian_kde(self.trips[self.trips.purp==purpose].duration/60)
 
         return pdf_dict
 
@@ -233,12 +246,26 @@ class Planner:
         """
         return self.draw_kde(self.duration_pdf[act])
 
+    def draw_trip_duration(self, act):
+        """
+        Draw a duration sample for a specified activity purpose
+        :params str act: activity purpose (ie 'work')
+        """
+        return self.draw_kde(self.trip_duration_pdf[act])
+
     def draw_start_time(self, act):
         """
         Draw a duration sample for a specified activity purpose
         :params str act: activity purpose (ie 'work')
         """
         return self.draw_kde(self.start_time_pdf[act])
+
+    def draw_plan(self, group):
+        """
+        Draw a plan, sampling for the specified demographic category
+        :params list group: A list of the subground to sample for. For example if self.plan_frequencies_group is grouped by age and gender, it can be ['female','60plus']
+        """
+        return choice.sample_weighted(self.plan_frequencies_group.loc[tuple(group)])
 
     ##### generative functions ################################################################################
 
@@ -354,6 +381,13 @@ class Planner:
         for act in self.duration_pdf:
             self.plot_kde(self.duration_pdf[act], title = 'Duration probability, {}'.format(act), figsize=(8,3))
 
+    def plot_trip_duration_kde(self):
+        """
+        Plot all duration density functions
+        """
+        for act in self.trip_duration_pdf:
+            self.plot_kde(self.trip_duration_pdf[act], title = 'Trip duration probability, {}'.format(act), figsize=(8,3), end=2, xlabel='Time (hours')
+
     def plot_start_time_kde(self):
         """
         Plot all duration density functions
@@ -392,4 +426,43 @@ class Planner:
             for i, igroup in act_seqs.groupby(level=act_seqs.index.names[:-1]):
                 label = i if isinstance(i, str) else ', '.join(i)
                 self.plot_plan_frequencies(act_seqs=igroup.droplevel(igroup.index.names[:-1]), print_results=print_results, n=n, title=title+', '+label)
+
+    def plot_tour_frequency_home(self):
+        """
+        Plot home-based tours frequency
+        """
+        home_tours = self.get_home_tours()
+        ((pd.Series([x for y in home_tours for x in y]).\
+            apply(lambda x: '-'.join(x)).value_counts())/len(home_tours)).\
+            sort_values(ascending=False).head(20).sort_values(ascending=True).\
+            plot(kind='barh', figsize=(12,17))
+
+        plt.title('Home-based tour frequency')
+        plt.xlabel('% of agents undertaking the tour in the day')
+        plt.grid()
+        plt.show()
+
+    def plot_trip_duration_cdf(self, control='purp'):
+        """
+        Plot the cumulative frequency of trip durations 
+        :params str control: a field to group by
+        """
+        trip_durations = self.trips.groupby([control,'duration']).freq.sum()
+        trip_durations = trip_durations.groupby(level=control).cumsum()
+        trip_durations = trip_durations / trip_durations.groupby(level=[control]).max()
+        trip_durations = trip_durations.reset_index().rename(columns={'freq':'trips'})
+
+        plt.figure(figsize=(17,10))
+        for c in trip_durations[control].unique():
+            trip_durations[trip_durations[control]==c].set_index(['duration']).\
+                trips.plot(kind='line', label=c, alpha = 0.8)
+
+        plt.title('Cumulative frequency of trip duration by {}'.format(control))
+        plt.ylabel('% of trips')
+        plt.xlabel('Duration (minutes)')
+        plt.xlim(0,120)
+        plt.ylim(0,1)
+        plt.grid()
+        plt.legend()
+        plt.show()
 
