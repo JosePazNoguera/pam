@@ -38,3 +38,5 @@ facility_sampling.ipynb
 weighted-facility-sampling_demo.ipynb
 planner.ipynb
 cache
+location_choice.ipynb
+planner_experiments.ipynb

@@ -132,4 +132,10 @@ class Sequencer:
         """
         One-hour time step
         """
+        ## self.select_activity()
+        # self.select_start_time()
+        # self.select_duration()
+        # self.select_location()
+        # self.select_mode()
+
         pass
