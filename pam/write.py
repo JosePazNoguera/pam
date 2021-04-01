@@ -769,3 +769,33 @@ def write_activities(
             raise ValueError('Please specify a valid csv or json file path.')
 
     return df
+
+def write_persons(
+    population,
+    path = None
+    ):
+    """
+    Export a table of persons and their attributes
+    """
+    ## collect data
+    df = []
+    for hid, pid, person in population.people():
+        record = {
+                'pid': pid,
+                'hid': hid,
+                'hzone': person.home
+            }
+        record = {**record, **dict(person.attributes)} # add person attributes
+        df.append(record)
+    df = pd.DataFrame(df)
+
+    ## export
+    if path != None:
+        if path.lower().endswith('.csv'):
+            df.to_csv(path, index=False)
+        elif path.lower().endswith('.json'):
+            df.to_json(path, orient='records')
+        else:
+            raise ValueError('Please specify a valid csv or json file path.')
+
+    return df

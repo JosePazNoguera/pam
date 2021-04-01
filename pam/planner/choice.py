@@ -26,4 +26,36 @@ def sample_weighted(weights, n=1):
     if n == 1:
         return sample[0]
     return sample
+
     
+def p_location(attractions, impedance, l):
+    """
+    Select a workplace destination
+    :params pd.Series attractions: destination scale measure (ie jobs)
+    :params pd.Series impedance: impedance measure (ie distance to zone)
+    :params float l: a destination choice distance parameter
+    
+    :returns: probabilities of workplace
+    """
+    p = attractions * np.exp(l*impedance) / np.exp(l*impedance).sum()
+    p = p / p.sum() # normalise
+    return p
+
+
+def p_expected_impedance(attractions, impedance, expected_impedance, k=-0.5, x0=10):
+    """
+    """
+    p = attractions * p_logistic(np.abs(impedance-expected_impedance), k, x0)
+    p = p / p.sum() # normalise
+    return p
+
+def p_logistic(x, k, x0):
+    """
+    Logistic function probability. p(0) = 1, p(large)->0, p(x0)=0.5
+    :params float k: Curve steepness parameter
+    :params float x0: curve midpoint
+
+    :returns: probability (0-1)
+    """
+    p = 1 / (1+np.exp(-k*(x-x0)))
+    return p

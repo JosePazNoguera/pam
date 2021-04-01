@@ -20,6 +20,7 @@ class Planner:
         self.population = None
         self.trips = None
         self.activities = None
+        self.persons = None
         self.freq_departure_purp = None
         self.average_od_duration = None
         self.average_od_duration_mode = None
@@ -31,6 +32,9 @@ class Planner:
         self.plan_frequencies = None
         self.plan_frequencies_group = None
         self.person_counter = self.inf_counter()
+
+        self.attractions = None
+        self.impedance = None
 
     def train(self, population):
         """
@@ -45,9 +49,11 @@ class Planner:
         self.population = population
         self.trips = write.write_benchmarks(population)
         self.activities = write.write_activities(population)
+        self.persons = write.write_persons(population)
         self.activities['freq'] = 1
         self.activities['start_minute'] = (self.activities.start_time - pd.Timestamp(1900,1,1))/pd.Timedelta(minutes=1)
         self.activities['hzone'] = self.activities['hzone'].map(str)
+        self.persons['hzone'] = self.persons['hzone'].map(str)
 
         # observed frequncy distributions
         self.freq_departure_purp = write.write_benchmarks(population, dimensions = ['departure_hour','purp'], data_fields=['freq'], aggfunc=sum)
@@ -75,6 +81,16 @@ class Planner:
         self.plan_frequencies = self.get_plan_frequencies(self.activities)
         self.plan_frequencies_group = self.get_plan_frequencies_group()
 
+
+    ##### I/O #################################################################################################
+    def load_location_data(self, attractions, impedance):
+        """
+        Load data required for location choice modules:
+        :params pd.Series attractions: A destination size measure. Ie number of jobs, floorspace, etc. The index indicates the zone number
+        :params pd.Series impedance: An OD cost measure (ie distance or travel time). The first index level indicates origin zone and the second destination
+        """
+        self.attractions = attractions
+        self.impedance = impedance
 
     ##### activity frequencies ################################################################################
     def get_plan_frequencies(self, df):
@@ -265,13 +281,25 @@ class Planner:
     def draw_plan(self, group):
         """
         Draw a plan, sampling for the specified demographic category
-        :params list group: A list of the subground to sample for. For example if self.plan_frequencies_group is grouped by age and gender, it can be ['female','60plus']
+        :params list group: A list specifying the subgroup to sample from. For example if self.plan_frequencies_group is grouped by age and gender, it can be ['female','60plus']
+
+        :returns str: A daily activity sequence representation. For example: 'home-->work-->social-->home'
         """
         return choice.sample_weighted(self.plan_frequencies_group.loc[tuple(group)])
 
+    def draw_PAM_plan(self,group):
+        """
+        Directly sample a PAM Plan specified demographic category
+        :params dictionary group: A dictionary specifying the subgroup to sample from. For example {'gender':'female','age':'60plus'}
+
+        :returns pam.Plan: A randomly selected PAM Plan. 
+        """
+        pid, hid = self.persons.loc[self.persons[group.keys()].isin(group.values()).all(axis=1), :].sample(1)[['pid','hid']].values[0]
+        return self.population.get(hid)[pid].plan
+
     ##### generative functions ################################################################################
 
-    def generate_person(self, weighted_on):
+    def generate_random_person(self, weighted_on):
         """
         Randomly create a PAM person (weighted sampling)
         :params list weighted_on: The dimensions to weight on
@@ -281,6 +309,15 @@ class Planner:
         p = p.sample(weights = p.values)
         pid = 'synth_{}'.format(next(self.person_counter))
         attributes = p.reset_index().drop(columns=['freq']).to_dict('records')[0]
+        person = Person(pid, attributes=attributes)
+        return person
+
+    def generate_person(self, attributes):
+        """
+        Create a PAM person with specified attributes
+        :params list weighted_on: The dimensions to weight on
+        """
+        pid = 'synth_{}'.format(next(self.person_counter))
         person = Person(pid, attributes=attributes)
         return person
 
