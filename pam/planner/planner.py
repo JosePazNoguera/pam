@@ -1,5 +1,5 @@
+
 from pam import write
-# from .temp import write
 from pam.core import Person
 
 import pandas as pd
