@@ -1,6 +1,6 @@
 [run]
 branch = True
-omit = venv/*, tests/*, notebooks/*, scripts/*
+omit = venv/*, tests/*, notebooks/*, scripts/*, pam/planner/*
 
 [report]
 fail_under = 88
