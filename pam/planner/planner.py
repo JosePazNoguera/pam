@@ -1,5 +1,5 @@
-
-from pam import write
+# from pam import write
+# from .temp import write
 from pam.core import Person
 
 import pandas as pd
@@ -9,7 +9,7 @@ import seaborn as sns
 import scipy
 import itertools
 from pam import variables
-from pam.planner import choice
+from . import choice
 
 import numpy as np
 
