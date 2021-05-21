@@ -9,7 +9,7 @@ from s2sphere import CellId
 
 
 def parse_time(time):
-    if isinstance(time, int) or isinstance(time, np.int64):
+    if isinstance(time, int) or isinstance(time, np.int64) or isinstance(time, np.int32):
         return minutes_to_datetime(time)
     if isinstance(time, str):
         return datetime_string_to_datetime(time)

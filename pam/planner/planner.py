@@ -1,4 +1,3 @@
-
 from pam import write
 from pam.core import Person
 
@@ -12,7 +11,7 @@ from pam import variables
 from . import choice
 
 import numpy as np
-
+import os
 
 class Planner:
 
@@ -106,6 +105,24 @@ class Planner:
         plan_freqs = self.activities.groupby(control_groups).apply(self.get_plan_frequencies)
         plan_freqs.index.rename(level=[-1], names=['plan'], inplace=True)
         return plan_freqs
+
+
+
+    def _activity_participation_frequencies(self, df, act_field='act',pid_field='pid'):
+        """
+        Return the percentage of people undertaking an activity within the day
+        """
+        return (df.groupby('act').pid.apply(lambda x: len(set(x))) / len(set(df.pid))).sort_values(ascending=False)
+
+
+    def get_activity_participation_frequencies(self, groupby=None, act_field='act',pid_field='pid'):
+        """
+        Return the percentage of people undertaking an activity within the day
+        """
+        if groupby is None:
+            return self._activity_participation_frequencies(self.activities)
+        else:
+            return self.activities.groupby(groupby).apply(self._activity_participation_frequencies)
 
     ##### transition matrix ################################################################################
 
@@ -346,8 +363,7 @@ class Planner:
         plt.ylabel('From activity')
         plt.xlabel('To activity')
 
-
-    def plot_activity_duration_summary(self):
+    def plot_activity_duration_summary(self, export_dir=None):
         """
         Histogram of activity durations by purpose
         """
@@ -356,9 +372,11 @@ class Planner:
             plt.grid()
             plt.title('Activity Duration, {}'.format(act))
             plt.xlabel('Duration (hours)')
+            if export_dir is not None:
+                plt.savefig(os.path.join(export_dir, 'duration_{}.png'.format(act)))
             plt.show()
 
-    def plot_activity_start_summary(self):
+    def plot_activity_start_summary(self, export_dir=None):
         """
         Histogram of activity start time by purpose
         """
@@ -368,6 +386,8 @@ class Planner:
             plt.title('Activity start time, {}'.format(act))
             plt.xlabel('Start hour')
             plt.xlim(0, 24)
+            if export_dir is not None:
+                plt.savefig(os.path.join(export_dir, 'start_time_{}.png'.format(act)))
             plt.show()
 
     def filter_ongoing_activities(self, df, hour):
@@ -447,7 +467,7 @@ class Planner:
         for act in self.start_time_pdf:
             self.plot_kde(self.start_time_pdf[act], title = 'Start time probability, {}'.format(act), figsize=(8,3))
 
-    def plot_plan_frequencies(self, act_seqs, print_results, n, title, figsize=(10,7)):
+    def plot_plan_frequencies(self, act_seqs, print_results, n, title, figsize=(10,7), export_path = None):
         """
         Plot top plan frequencies
         :params pd.Series act_seqs: Activity sequence frequencies
@@ -464,20 +484,32 @@ class Planner:
         plt.title(title)
         plt.grid()
         plt.xlabel('% of plans')
+        if export_path is not None:
+            plt.savefig(export_path, bbox_inches='tight')
         # plt.show()
 
-    def plot_plan_frequencies_group(self, groupby=None, print_results=False, n=10, title='Most common activity sequences'):
+    def plot_plan_frequencies_group(
+        self, 
+        groupby=None, 
+        print_results=False, 
+        n=10, 
+        title='Most common activity sequences',
+        export_dir = None
+    ):
         """
         Plot top n plan frequencies
         """
         if groupby is None:
             act_seqs = self.get_plan_frequencies(self.activities)
-            self.plot_plan_frequencies(act_seqs=act_seqs, print_results=print_results, n=n, title=title)
+            self.plot_plan_frequencies(act_seqs=act_seqs, print_results=print_results, n=n, title=title, )
         else:
             act_seqs = self.get_plan_frequencies_group(groupby)
             for i, igroup in act_seqs.groupby(level=act_seqs.index.names[:-1]):
                 label = i if isinstance(i, str) else ', '.join(i)
-                self.plot_plan_frequencies(act_seqs=igroup.droplevel(igroup.index.names[:-1]), print_results=print_results, n=n, title=title+', '+label)
+                title_label = title+', '+label
+                export_path = os.path.join(export_dir, title_label) if export_dir is not None else None
+                self.plot_plan_frequencies(act_seqs=igroup.droplevel(igroup.index.names[:-1]), print_results=print_results, 
+                n=n, title=title_label, export_path = export_path)
 
     def plot_tour_frequency_home(self):
         """

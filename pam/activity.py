@@ -949,10 +949,7 @@ class Leg(PlanComponent):
     def euclidean_distance(self):
         # calculate leg euclidean distance in km:
         # assumes grid definition of Location class
-        if self.end_location.loc and self.start_location.loc:
-            return ((self.end_location.loc.x-self.start_location.loc.x)**2 + (self.end_location.loc.y-self.start_location.loc.y)**2)**0.5 / 1000
-        else:
-            return float('nan')
+        return ((self.end_location.loc.x-self.start_location.loc.x)**2 + (self.end_location.loc.y-self.start_location.loc.y)**2)**0.5 / 1000
 
 
 class Location:

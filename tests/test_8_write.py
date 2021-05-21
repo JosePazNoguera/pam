@@ -14,7 +14,8 @@ from pam.core import Household, Person, Population
 from pam import write
 from pam.write import write_travel_diary, write_matsim, write_matsim_v12,  \
     write_population_csv, write_matsim_plans, write_matsim_attributes, write_od_matrices, write_benchmarks, \
-    write_distance_benchmark, write_mode_distance_benchmark, write_mode_duration_benchmark, write_duration_benchmark, write_departure_time_benchmark
+    write_distance_benchmark, write_mode_distance_benchmark, write_mode_duration_benchmark, write_duration_benchmark, write_departure_time_benchmark,  \
+    write_activities, write_persons
 from pam.read import read_matsim
 from pam.utils import minutes_to_datetime as mtdt
 from pam.variables import END_OF_DAY
@@ -768,6 +769,10 @@ def test_write_benchmarks_multiple(tmpdir):
     assert list(write_mode_duration_benchmark(population).trips) == [2000.0, 0.0, 0.0, 3000.0, 2000.0, 1000.0, 0.0, 0.0, 1000.0]
     assert list(write_duration_benchmark(population).trips) == [2000, 0, 0, 3000, 2000, 1000, 0, 0, 1000]
     assert list(write_departure_time_benchmark(population).trips) == [1000, 2000, 2000, 2000, 5000]
+    assert list(write_persons(population).pid) == ['census_0', 'census_1', 'census_2']
+    assert list(write_activities(population).act) == ['home', 'work', 'home', 'home', 'work', 'pt interaction', 'pt interaction',
+                                                    'pt interaction', 'pt interaction', 'pt interaction', 'pt interaction', 'home', 
+                                                    'home', 'work', 'home']
 
 ###########################################################
 # helper functions
