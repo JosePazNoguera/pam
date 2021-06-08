@@ -23,10 +23,14 @@ class Plan:
             return self.home_location
         if self.day:
             for act in self.activities:
-                if act.act is not None and act.act.lower()[:4] == 'home':
+                if act.act is not None and "home" in act.act.lower():
                     return act.location
-        # self.logger.warning( "failed to find home, return area at start of day")  # too much logging!
-        return self.day[0].location
+            
+            self.logger.warning( "failed to find home, return area at start of day")
+            return self.day[0].location
+
+        self.logger.warning( "failed to find home, due to no trips data, return home location of None")
+        return None
 
     @property
     def activities(self):
